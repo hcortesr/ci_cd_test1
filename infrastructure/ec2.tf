@@ -35,6 +35,6 @@ resource "aws_instance" "apache_server" {
   user_data = file("${path.module}/data.sh")
 
   tags = {
-    Name = "apache"
+    Name = "Servidor Hola"
   }
 }
