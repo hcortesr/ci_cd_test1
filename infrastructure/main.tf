@@ -1,4 +1,17 @@
 terraform {
+  #############################################################
+  ## AFTER RUNNING TERRAFORM APPLY (WITH LOCAL BACKEND)
+  ## YOU WILL UNCOMMENT THIS CODE THEN RERUN TERRAFORM INIT
+  ## TO SWITCH FROM LOCAL BACKEND TO REMOTE AWS BACKEND
+  #############################################################
+  backend "s3" {
+    bucket         = "devops-github-actions-test-1" # REPLACE WITH YOUR BUCKET NAME
+    key            = "03-basics/import-bootstrap/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -11,42 +24,34 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws_security_group" "apache_sec_group" {
-  name        = "SG for the apache server"
-  description = "This is just the sg for the apache server"
+resource "aws_s3_bucket" "terraform_state" {
+  bucket        = "devops-github-actions-test-1" # REPLACE WITH YOUR BUCKET NAME
+  force_destroy = true
 }
 
-resource "aws_vpc_security_group_ingress_rule" "rule_ssh" {
-  security_group_id = aws_security_group.apache_sec_group.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 22
-  ip_protocol       = "tcp"
-  to_port           = 22
-}
-
-resource "aws_vpc_security_group_ingress_rule" "rule_http" {
-  security_group_id = aws_security_group.apache_sec_group.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 80
-  ip_protocol       = "tcp"
-  to_port           = 80
-}
-
-resource "aws_vpc_security_group_egress_rule" "rule_all_traffic" {
-  security_group_id = aws_security_group.apache_sec_group.id
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-}
-
-resource "aws_instance" "apache_server" {
-  ami           = "ami-020cba7c55df1f615"
-  instance_type = "t2.micro"
-
-  vpc_security_group_ids = [aws_security_group.apache_sec_group.id]
-
-  user_data = file("${path.module}/data.sh")
-
-  tags = {
-    Name = "apache-test-tf"
+resource "aws_s3_bucket_versioning" "terraform_bucket_versioning" {
+  bucket = aws_s3_bucket.terraform_state.id
+  versioning_configuration {
+    status = "Enabled"
   }
 }
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_crypto_conf" {
+  bucket        = aws_s3_bucket.terraform_state.bucket 
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = "terraform-state-locking"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
+
