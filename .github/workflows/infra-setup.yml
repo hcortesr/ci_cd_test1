@@ -1,0 +1,16 @@
+name: "terraform-setup"
+
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest 
+    steps:
+      - name: "Get the repo"
+        uses: actions/checkout@v4.2.2
+      - name: "files"
+        run: ls
