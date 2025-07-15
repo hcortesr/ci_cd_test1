@@ -29,6 +29,7 @@ resource "aws_vpc_security_group_egress_rule" "rule_all_traffic" {
 resource "aws_instance" "apache_server" {
   ami           = "ami-020cba7c55df1f615"
   instance_type = "t2.micro"
+  key_name = aws_key_pair.deployer.key_name
 
   vpc_security_group_ids = [aws_security_group.apache_sec_group.id]
 
@@ -37,4 +38,10 @@ resource "aws_instance" "apache_server" {
   tags = {
     Name = "Servidor Hola"
   }
+}
+
+// Key Pair
+resource "aws_key_pair" "deployer" {
+  key_name   = "deployer-key"
+  public_key = file("llave.pub")
 }
