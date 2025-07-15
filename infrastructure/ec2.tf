@@ -36,7 +36,7 @@ resource "aws_instance" "apache_server" {
   user_data = file("${path.module}/data.sh")
 
   tags = {
-    Name = "Servidor Hola"
+    Name = "Apache server"
   }
 }
 
@@ -44,4 +44,10 @@ resource "aws_instance" "apache_server" {
 resource "aws_key_pair" "deployer" {
   key_name   = "deployer-key"
   public_key = file("llave.pub")
+}
+
+// Output variables
+
+output "public_dns_instance" {
+  value = aws_instance.apache_server.public_dns
 }

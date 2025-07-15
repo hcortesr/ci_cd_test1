@@ -1,9 +1,16 @@
 name: deploy code
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["terraform-setup"]
+    types:
+      - completed
+
+
+permissions:
+  actions: read
+  contents: read
+
 
 jobs:
   deployment:
@@ -11,12 +18,27 @@ jobs:
       
     steps:
       - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tf_vars
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+
+      - name: View files
+        run: ls
+
+      - name: Create web directory
+        run: mkdir -p /var/www/html/
+
       - name: rsync deployments
         uses: burnett01/rsync-deployments@7.0.2
         with:
           switches: -avzr --delete --rsync-path="sudo rsync"
           path: app/
           remote_path: /var/www/html/
-          remote_host: ec2-3-83-173-66.compute-1.amazonaws.com
+          remote_host: $(cat public_dns.txt)
           remote_user: ubuntu
           remote_key: ${{ secrets.PRIVATE_KEY_PAIR }}

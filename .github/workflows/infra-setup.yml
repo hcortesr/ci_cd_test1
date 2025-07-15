@@ -8,6 +8,7 @@ on:
 
   workflow_dispatch: 
 
+
 jobs:
   infra:
     runs-on: ubuntu-latest 
@@ -41,3 +42,23 @@ jobs:
         run: |
           cd infrastructure
           terraform apply -auto-approve
+
+      - name: Safe public_dns
+        run: |
+          cd infrastructure
+          terraform output -raw public_dns_instance
+          terraform output public_dns_instance
+          public_dns=$(terraform output -raw public_dns_instance)
+          echo $public_dns
+          cd ..
+          mkdir -p tf_vars
+          echo $public_dns > tf_vars/public_dns.txt
+          cat tf_vars/public_dns.txt
+
+      - name: Read file
+        run: cat tf_vars/public_dns.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tf_vars
+          path: tf_vars
