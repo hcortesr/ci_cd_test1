@@ -34,7 +34,9 @@ jobs:
 
 
       - name: View files
-        run: ls
+        run: |
+          ls
+          sleep 10
 
 
       - name: rsync deployments
