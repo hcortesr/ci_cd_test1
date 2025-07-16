@@ -19,11 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: build project
+      - name: Build project
         run: |
           cd app
           npm install
           npm run build
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build dockerization
+        run: |
+          cd app
+          docker build -t hectorcortesr/ci_cd_test1 .
+          docker push hectorcortesr/ci_cd_test1
 
       - uses: actions/download-artifact@v4
         with:
@@ -32,19 +44,23 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
 
-
       - name: View files
-        run: |
-          ls
-          sleep 10
+        run: ls
 
+      - name: Set host as output
+        id: host
+        run: echo "host=$(cat public_dns.txt)" >> $GITHUB_OUTPUT
 
-      - name: rsync deployments
-        uses: burnett01/rsync-deployments@7.0.2
+      - name: Execute remote SSH commands using password
+        uses: appleboy/ssh-action@v1
         with:
-          switches: -avzr --delete --rsync-path="sudo rsync"
-          path: app/dist/
-          remote_path: /var/www/html/
-          remote_host: $(cat public_dns.txt)
-          remote_user: ubuntu
-          remote_key: ${{ secrets.PRIVATE_KEY_PAIR }}
+          host: ${{ steps.host.outputs.host }}
+          username: ubuntu
+          key: ${{ secrets.PRIVATE_KEY_PAIR }}
+          script: |
+            sleep 15
+            echo ${{ secrets.DOCKER_TOKEN }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            sudo docker pull hectorcortesr/ci_cd_test1
+            sudo docker stop $(docker ps -q)
+            sudo docker container prune -f
+            sudo docker run -p 80:80 -d --name app hectorcortesr/ci_cd_test1
